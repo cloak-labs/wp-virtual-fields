@@ -32,7 +32,7 @@ At Cloak Labs, we found the need for this abstraction in particular with headles
 
 The abstraction takes care of adding these fields to Post Objects returned by core WP functions such as `get_posts` and `WP_Query`, as well as REST API responses (including revisions endpoints).
 
-The following adds two virtual fields, `pathname` and `featured_image`, to all posts, pages, and a testmonials custom post type:
+The following adds two virtual fields, `pathname` and `featured_image`, to all posts, pages, and a testimonials custom post type:
 
 ```php
 register_virtual_fields(['post', 'page', 'testimonial'], [
