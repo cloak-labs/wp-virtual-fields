@@ -26,7 +26,7 @@ When you need to access or manipulate data that doesn't need to be stored in you
 
 WordPress does NOT have a single filter you can hook into to modify all WP_Post objects regardless of the context they were fetched from. So if you want to include a virtual field whenever you fetch a post object, whether it's via core functions or the REST API, you'll have to deal with multiple core filters/functions (for each field) -- you'll go down a rabbit-hole trying to find the right filter hooks, repeat yourself, and/or end up writing your own implementation of this package. We've done it for you, providing a simple, re-usable, and maintainable abstraction over all the ugly stuff.
 
-We at Cloak Labs found the need for this abstraction in particular with headless WordPress projects; if you haven't yet, check out [CloakWP](https://github.com/cloak-labs/cloakwp-js), our full-stack headless WordPress framework.
+At Cloak Labs, we found the need for this abstraction in particular with headless WordPress projects; if you haven't already, check out [CloakWP](https://github.com/cloak-labs/cloakwp-js), our full-stack headless WordPress framework.
 
 ## How it works
 
