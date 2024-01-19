@@ -22,7 +22,10 @@ class VirtualField
     return new static($field_name);
   }
 
-  public function value($value): static
+  /** Either provide a static value, or a callback function that receives 
+   *  a WP_Post object and returns the value.
+   */
+  public function value(mixed $value): static
   {
     $this->value = $value;
     return $this;

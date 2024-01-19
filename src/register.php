@@ -2,21 +2,28 @@
 
 declare(strict_types=1);
 
+use CloakWP\Utils;
+
+
 if (!function_exists('register_virtual_fields')) {
   function register_virtual_fields(array|string $postTypes, array $virtualFields)
   {
-    if (!is_array($postTypes)) $postTypes = [$postTypes];
+    if (!is_array($postTypes))
+      $postTypes = [$postTypes];
 
     // add virtual fields to post objects returned by `get_posts` and/or `WP_Query`:
     add_filter("the_posts", function ($posts, $query) use ($postTypes, $virtualFields) {
-      if (!in_array($query->query_vars['post_type'], $postTypes)) return $posts;
-      if (!is_array($posts) || !count($posts)) return $posts;
+      if (!in_array($query->query_vars['post_type'], $postTypes))
+        return $posts;
+      if (!is_array($posts) || !count($posts))
+        return $posts;
 
-      return array_map(function ($post) use ($virtualFields) {
+      return array_map(function (\WP_Post $post) use ($virtualFields) {
         // add each virtual field to post object:
         foreach ($virtualFields as $_field) {
           $field = $_field->getSettings();
-          if (in_array('core', $field['excludedFrom'])) continue;
+          if (in_array('core', $field['excludedFrom']))
+            continue;
 
           $post->{$field['name']} = $_field->getValue($post);
         }
@@ -28,17 +35,19 @@ if (!function_exists('register_virtual_fields')) {
     add_action('rest_api_init', function () use ($postTypes, $virtualFields) {
       foreach ($virtualFields as $_field) {
         $field = $_field->getSettings();
-        if (in_array('rest', $field['excludedFrom'])) continue;
+        if (in_array('rest', $field['excludedFrom']))
+          continue;
 
         register_rest_field(
           $postTypes,
           $field['name'],
           array(
-            'get_callback'    => function ($post) use ($_field) {
-              return $_field->getValue($post);
+            'get_callback' => function ($post) use ($_field) {
+              $postObj = Utils::get_wp_post_object($post);
+              return $_field->getValue($postObj);
             },
             'update_callback' => null,
-            'schema'          => null,
+            'schema' => null,
           )
         );
       }
@@ -47,7 +56,8 @@ if (!function_exists('register_virtual_fields')) {
     // add virtual fields to post "revisions" REST API responses (requires different approach than above):
     add_filter('rest_prepare_revision', function ($response, $post) use ($postTypes, $virtualFields) {
       $parentPost = get_post($post->post_parent); // get the parent's post object
-      if (!in_array($parentPost->post_type, $postTypes)) return $response;
+      if (!in_array($parentPost->post_type, $postTypes))
+        return $response;
 
       $data = $response->get_data();
 
@@ -55,7 +65,8 @@ if (!function_exists('register_virtual_fields')) {
 
       foreach ($virtualFields as $_field) {
         $field = $_field->getSettings();
-        if (in_array('rest_revisions', $field['excludedFrom'])) continue;
+        if (in_array('rest_revisions', $field['excludedFrom']))
+          continue;
 
         $data[$field['name']] = $_field->getValue($parentPost);
       }
