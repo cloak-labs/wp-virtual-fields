@@ -11,6 +11,7 @@ class VirtualField
   protected string $name;
   protected $value;
   protected array $excludedFrom = [];
+  protected int $recursizeIterationCount = 0;
 
   public function __construct(string $field_name)
   {
@@ -27,13 +28,33 @@ class VirtualField
    */
   public function value(mixed $value): static
   {
-    $this->value = $value;
+    if (is_callable($value)) {
+      $this->value = function ($args) use ($value) {
+        $this->recursizeIterationCount++;
+        $result = $value($args);
+        return $result;
+      };
+    } else {
+      $this->value = $value;
+    }
+
     return $this;
+  }
+
+  /** For internal use only. */
+  public function _resetRecursiveIterationCount()
+  {
+    $this->recursizeIterationCount = 0;
+  }
+  /** For internal use only. */
+  public function _getRecursiveIterationCount(): int
+  {
+    return $this->recursizeIterationCount;
   }
 
   public function excludeFrom(array $excludeFrom): static
   {
-    $allowedValues = ['rest', 'core', 'rest_revisions'];
+    $allowedValues = ['rest', 'core', 'rest_revisions', 'acf'];
     $invalidValues = array_diff($excludeFrom, $allowedValues);
 
     if (!empty($invalidValues)) {
