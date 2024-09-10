@@ -1,5 +1,5 @@
 {
-  "name": "cloak-labs/wp-virtual-fields",
+  "name": "cloakwp/virtual-fields",
   "description": "Simple API for creating virtual fields on WordPress posts.",
   "version": "0.0.2",
   "license": "LGPL-3.0-only",
