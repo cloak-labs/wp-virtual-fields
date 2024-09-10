@@ -4,7 +4,8 @@
   "version": "0.0.2",
   "license": "LGPL-3.0-only",
   "require": {
-    "composer/installers": "^2.2"
+    "composer/installers": "^2.2",
+    "cloakwp/core": "^0.0.1"
   },
   "autoload": {
     "psr-4": {
