@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CloakWP\Utils;
+use CloakWP\Core\Utils;
 
 
 if (!function_exists('register_virtual_fields')) {
@@ -121,14 +121,15 @@ if (!function_exists('register_virtual_fields')) {
       if (!is_array($posts) || !count($posts))
         return $posts;
 
-      if ($posts['ID'])
+      if (isset($posts['ID']) && $posts['ID']) {
         $posts = [$posts];
+      }
 
       return array_map(function ($post) use ($postTypes, $virtualFields) {
         if (!is_array($post))
           return $post;
 
-        if (in_array($post['post_type'], $postTypes)) {
+        if (isset($post['post_type']) && in_array($post['post_type'], $postTypes)) {
           // add each virtual field to post object:
           /** @var \CloakWP\VirtualFields\VirtualField $_field */
           foreach ($virtualFields as $_field) {
