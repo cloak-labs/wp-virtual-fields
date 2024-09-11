@@ -2,17 +2,17 @@
     "packages": [
         {
             "name": "cloakwp/core",
-            "version": "0.0.1",
-            "version_normalized": "0.0.1.0",
+            "version": "0.0.2",
+            "version_normalized": "0.0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cloak-labs/cloakwp-core.git",
-                "reference": "6dfdb110e42bd28c505ffab2f6cc3cc01ddc9f2a"
+                "reference": "994fcb8c67d528c2218d4a16b8972bb0109b80f7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cloak-labs/cloakwp-core/zipball/6dfdb110e42bd28c505ffab2f6cc3cc01ddc9f2a",
-                "reference": "6dfdb110e42bd28c505ffab2f6cc3cc01ddc9f2a",
+                "url": "https://api.github.com/repos/cloak-labs/cloakwp-core/zipball/994fcb8c67d528c2218d4a16b8972bb0109b80f7",
+                "reference": "994fcb8c67d528c2218d4a16b8972bb0109b80f7",
                 "shasum": ""
             },
             "require": {
@@ -20,7 +20,7 @@
                 "myclabs/deep-copy": "^1.11",
                 "snicco/better-wp-api": "^1.9"
             },
-            "time": "2024-09-09T22:33:19+00:00",
+            "time": "2024-09-11T00:15:24+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -35,7 +35,7 @@
             "description": "A set of OOP abstractions around WordPress core to improve developer experience.",
             "support": {
                 "issues": "https://github.com/cloak-labs/cloakwp-core/issues",
-                "source": "https://github.com/cloak-labs/cloakwp-core/tree/v0.0.1"
+                "source": "https://github.com/cloak-labs/cloakwp-core/tree/v0.0.2"
             },
             "install-path": "../cloakwp/core"
         },

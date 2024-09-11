@@ -35,6 +35,9 @@ abstract class Asset
     return new static($handle);
   }
 
+  /**
+   * Specify the action hook where this asset should be enqueued. 
+   */
   public function hook(string $hookName): static
   {
     $this->enqueueHook = $hookName;
@@ -75,6 +78,9 @@ abstract class Asset
     return $this;
   }
 
+  /**
+   * Enqueue the script/stylesheet -- call this after the other configuration methods.
+   */
   public function enqueue()
   {
     add_action($this->enqueueHook, function () {

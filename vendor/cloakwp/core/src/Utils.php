@@ -19,7 +19,7 @@ class Utils
   */
   public static function write_log($log)
   {
-    if (!CLOAKWP_DEBUG) {
+    if (!\CLOAKWP_DEBUG) {
       return;
     }
 
@@ -300,17 +300,6 @@ class Utils
     foreach ($files as $file) {
       require_once $file;
     }
-  }
-
-  /* 
-    A function that returns this plugin's "includes" directory URL.
-    Use case example: enables a theme's block.json file to reference 
-    the `block-preview.php` file within the plugin, like so: 
-    Utils::cloakwp_plugin_path() . '/block-preview.php';
-  */
-  public static function cloakwp_plugin_path()
-  {
-    return dirname(__FILE__);
   }
 
   /**

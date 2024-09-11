@@ -1,8 +1,8 @@
 <?php return array(
     'root' => array(
         'name' => 'cloakwp/virtual-fields',
-        'pretty_version' => '0.0.2',
-        'version' => '0.0.2.0',
+        'pretty_version' => '0.0.4',
+        'version' => '0.0.4.0',
         'reference' => NULL,
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
@@ -11,17 +11,17 @@
     ),
     'versions' => array(
         'cloakwp/core' => array(
-            'pretty_version' => '0.0.1',
-            'version' => '0.0.1.0',
-            'reference' => '6dfdb110e42bd28c505ffab2f6cc3cc01ddc9f2a',
+            'pretty_version' => '0.0.2',
+            'version' => '0.0.2.0',
+            'reference' => '994fcb8c67d528c2218d4a16b8972bb0109b80f7',
             'type' => 'library',
             'install_path' => __DIR__ . '/../cloakwp/core',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
         'cloakwp/virtual-fields' => array(
-            'pretty_version' => '0.0.2',
-            'version' => '0.0.2.0',
+            'pretty_version' => '0.0.4',
+            'version' => '0.0.4.0',
             'reference' => NULL,
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',

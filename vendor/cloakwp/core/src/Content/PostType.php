@@ -25,9 +25,9 @@ class PostType
   protected $afterReadCallback;
 
   /**
-   * @var callable|null $apiResponseCallback
+   * @var callable|null $filterValueCallback
    */
-  protected $apiResponseCallback;
+  protected $filterValueCallback;
 
 
   public function __construct(string $slug)
@@ -543,9 +543,9 @@ class PostType
    * Customize the REST API response for posts of this type. Provide a callback
    * that receives the default response as an argument and returns your modified response.
    */
-  public function apiResponse(callable $filterCallback): static
+  public function value(callable $filterCallback): static
   {
-    $this->apiResponseCallback = $filterCallback;
+    $this->filterValueCallback = $filterCallback;
     return $this;
   }
 
@@ -598,15 +598,15 @@ class PostType
       register_virtual_fields($this->slug, $this->virtualFields);
     }
 
-    if ($this->apiResponseCallback) {
-      $callback = $this->apiResponseCallback;
+    if ($this->filterValueCallback) {
+      $callback = $this->filterValueCallback;
       add_filter("rest_prepare_$this->slug", function ($response, $post, $context) use ($callback) {
         // First check if the REST response is an error:
         if (is_wp_error($response)) {
           return $response;
         }
 
-        // otherwise, return whatever the user's custom apiResponseCallback returns
+        // otherwise, return whatever the user's custom filterValueCallback returns
         return $callback($response, $post, $context);
       }, 50, 3);
     }
