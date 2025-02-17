@@ -53,7 +53,9 @@ if (!function_exists('register_virtual_fields')) {
               return $_field->getValue($postObj);
             },
             'update_callback' => null,
-            'schema' => null,
+            'schema' => [
+              'context' => ['view'], // we assume that virtual fields aren't needed in "edit" context (i.e. when updating a post)
+            ],
           )
         );
       }
