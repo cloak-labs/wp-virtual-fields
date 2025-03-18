@@ -49,7 +49,7 @@ if (!function_exists('register_virtual_fields')) {
           $field['name'],
           array(
             'get_callback' => function ($post) use ($_field) {
-              $postObj = Utils::get_wp_post_object($post);
+              $postObj = Utils::asPostObject($post);
               return $_field->getValue($postObj);
             },
             'update_callback' => null,
@@ -140,7 +140,7 @@ if (!function_exists('register_virtual_fields')) {
             if (in_array('core', $field['excludedFrom']))
               continue;
 
-            $post[$field['name']] = $_field->getValue(Utils::get_wp_post_object($post));
+            $post[$field['name']] = $_field->getValue(Utils::asPostObject($post));
           }
         }
 
