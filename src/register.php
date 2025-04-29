@@ -8,7 +8,7 @@ use CloakWP\Core\Utils;
 if (!function_exists('register_virtual_fields')) {
   function register_virtual_fields(array|string $postTypes, array $virtualFields)
   {
-    $MAX_RECURSIVE_DEPTH = 3; // prevents infinite loops (limiting recursion to the specified number) caused by the `value` method of a VirtualField triggering one of the filters used below
+    $MAX_RECURSIVE_DEPTH = 2; // prevents infinite loops (limiting recursion to the specified number) caused by the `value` method of a VirtualField triggering one of the filters used below
 
     if (!is_array($postTypes))
       $postTypes = [$postTypes];
@@ -18,16 +18,22 @@ if (!function_exists('register_virtual_fields')) {
       if (!is_array($posts) || !count($posts))
         return $posts;
 
-      return array_map(function (\WP_Post $post) use ($postTypes, $virtualFields, $MAX_RECURSIVE_DEPTH) {
+      // Pre-filter virtual fields by exclusion to avoid checking in the inner loop
+      $coreVirtualFields = array_filter($virtualFields, function ($_field) {
+        $field = $_field->getSettings();
+        return !in_array('core', $field['excludedFrom']);
+      });
+
+      if (empty($coreVirtualFields)) {
+        return $posts;
+      }
+
+      return array_map(function (\WP_Post $post) use ($postTypes, $coreVirtualFields, $MAX_RECURSIVE_DEPTH) {
         if (in_array($post->post_type, $postTypes)) {
           // add each virtual field to post object:
-          foreach ($virtualFields as $_field) {
+          foreach ($coreVirtualFields as $_field) {
             if ($_field->_getRecursiveIterationCount() < $MAX_RECURSIVE_DEPTH) {
-              $field = $_field->getSettings();
-              if (in_array('core', $field['excludedFrom']))
-                continue;
-
-              $post->{$field['name']} = $_field->getValue($post);
+              $post->{$_field->getSettings()['name']} = $_field->getValue($post);
               $_field->_resetRecursiveIterationCount();
             }
           }
@@ -39,11 +45,18 @@ if (!function_exists('register_virtual_fields')) {
 
     // add virtual fields to post REST API responses:
     add_action('rest_api_init', function () use ($postTypes, $virtualFields) {
-      foreach ($virtualFields as $_field) {
+      // Pre-filter virtual fields for REST API
+      $restVirtualFields = array_filter($virtualFields, function ($_field) {
         $field = $_field->getSettings();
-        if (in_array('rest', $field['excludedFrom']))
-          continue;
+        return !in_array('rest', $field['excludedFrom']);
+      });
 
+      if (empty($restVirtualFields)) {
+        return;
+      }
+
+      foreach ($restVirtualFields as $_field) {
+        $field = $_field->getSettings();
         register_rest_field(
           $postTypes,
           $field['name'],
@@ -67,16 +80,21 @@ if (!function_exists('register_virtual_fields')) {
       if (!in_array($parentPost->post_type, $postTypes))
         return $response;
 
-      $data = $response->get_data();
-
-      $parentPost->post_content = $post->post_content; // swap parent's content for revision's content, before we pass $parentPost into getValue()
-
-      foreach ($virtualFields as $_field) {
+      // Pre-filter virtual fields for REST revisions
+      $revisionVirtualFields = array_filter($virtualFields, function ($_field) {
         $field = $_field->getSettings();
-        if (in_array('rest_revisions', $field['excludedFrom']))
-          continue;
+        return !in_array('rest_revisions', $field['excludedFrom']);
+      });
 
-        $data[$field['name']] = $_field->getValue($parentPost);
+      if (empty($revisionVirtualFields)) {
+        return $response;
+      }
+
+      $data = $response->get_data();
+      $parentPost->post_content = $post->post_content; // swap parent's content for revision's content
+
+      foreach ($revisionVirtualFields as $_field) {
+        $data[$_field->getSettings()['name']] = $_field->getValue($parentPost);
       }
 
       return rest_ensure_response($data);
@@ -123,24 +141,29 @@ if (!function_exists('register_virtual_fields')) {
       if (!is_array($posts) || !count($posts))
         return $posts;
 
+      // Pre-filter virtual fields for Eloquent
+      $eloquentVirtualFields = array_filter($virtualFields, function ($_field) {
+        $field = $_field->getSettings();
+        return !in_array('core', $field['excludedFrom']);
+      });
+
+      if (empty($eloquentVirtualFields)) {
+        return $posts;
+      }
+
       if (isset($posts['ID']) && $posts['ID']) {
         $posts = [$posts];
       }
 
-      return array_map(function ($post) use ($postTypes, $virtualFields) {
+      return array_map(function ($post) use ($postTypes, $eloquentVirtualFields) {
         if (!is_array($post))
           return $post;
 
         if (isset($post['post_type']) && in_array($post['post_type'], $postTypes)) {
           // add each virtual field to post object:
           /** @var \CloakWP\VirtualFields\VirtualField $_field */
-          foreach ($virtualFields as $_field) {
-
-            $field = $_field->getSettings();
-            if (in_array('core', $field['excludedFrom']))
-              continue;
-
-            $post[$field['name']] = $_field->getValue(Utils::asPostObject($post));
+          foreach ($eloquentVirtualFields as $_field) {
+            $post[$_field->getSettings()['name']] = $_field->getValue(Utils::asPostObject($post));
           }
         }
 
