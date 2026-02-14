@@ -13,7 +13,7 @@
  *
  * @wordpress-plugin
  * Plugin Name:       CloakWP - Virtual Fields
- * Plugin URI:        https://https://github.com/cloak-labs/cloakwp-plugin
+ * Plugin URI:        https://https://github.com/cloak-labs/wp-virtual-fields
  * Description:       Simple API for creating virtual fields on WordPress posts.
  * Version:           0.0.1
  * Author:            Cloak Labs

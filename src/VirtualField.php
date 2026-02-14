@@ -12,10 +12,24 @@ class VirtualField
   protected $value;
   protected array $excludedFrom = [];
   protected int $recursizeIterationCount = 0;
+  /** Max recursion depth for this field (add when count < this). Default 2 so most fields can go 2 layers. */
+  protected int $maxRecursiveDepth = 2;
 
   public function __construct(string $field_name)
   {
     $this->name = $field_name; // todo: sanitize $field_name to ensure it's a valid format for a field name
+  }
+
+  /** Set how many recursive layers this field is allowed (stops infinite loops from e.g. ACF bidirectional relationships). */
+  public function maxRecursiveDepth(int $depth): static
+  {
+    $this->maxRecursiveDepth = $depth;
+    return $this;
+  }
+
+  public function getMaxRecursiveDepth(): int
+  {
+    return $this->maxRecursiveDepth;
   }
 
   public static function make(string $field_name): static
@@ -31,8 +45,11 @@ class VirtualField
     if (is_callable($value)) {
       $this->value = function ($args) use ($value) {
         $this->recursizeIterationCount++;
-        $result = $value($args);
-        return $result;
+        try {
+          return $value($args);
+        } finally {
+          $this->recursizeIterationCount--;
+        }
       };
     } else {
       $this->value = $value;
@@ -72,6 +89,7 @@ class VirtualField
     return [
       'name' => $this->name,
       'excludedFrom' => $this->excludedFrom,
+      'maxRecursiveDepth' => $this->maxRecursiveDepth,
     ];
   }
 

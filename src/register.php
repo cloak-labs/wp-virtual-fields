@@ -8,17 +8,14 @@ use CloakWP\Core\Utils;
 if (!function_exists('register_virtual_fields')) {
   function register_virtual_fields(array|string $postTypes, array $virtualFields)
   {
-    $MAX_RECURSIVE_DEPTH = 2; // prevents infinite loops (limiting recursion to the specified number) caused by the `value` method of a VirtualField triggering one of the filters used below
-
     if (!is_array($postTypes))
       $postTypes = [$postTypes];
 
     // add virtual fields to post objects returned by `get_posts` and/or `WP_Query`:
-    add_filter("the_posts", function ($posts, $query) use ($postTypes, $virtualFields, $MAX_RECURSIVE_DEPTH) {
+    add_filter("the_posts", function ($posts, $query) use ($postTypes, $virtualFields) {
       if (!is_array($posts) || !count($posts))
         return $posts;
 
-      // Pre-filter virtual fields by exclusion to avoid checking in the inner loop
       $coreVirtualFields = array_filter($virtualFields, function ($_field) {
         $field = $_field->getSettings();
         return !in_array('core', $field['excludedFrom']);
@@ -28,13 +25,45 @@ if (!function_exists('register_virtual_fields')) {
         return $posts;
       }
 
-      return array_map(function (\WP_Post $post) use ($postTypes, $coreVirtualFields, $MAX_RECURSIVE_DEPTH) {
-        if (in_array($post->post_type, $postTypes)) {
-          // add each virtual field to post object:
-          foreach ($coreVirtualFields as $_field) {
-            if ($_field->_getRecursiveIterationCount() < $MAX_RECURSIVE_DEPTH) {
-              $post->{$_field->getSettings()['name']} = $_field->getValue($post);
-              $_field->_resetRecursiveIterationCount();
+      $isSecondaryRestQuery = (defined('REST_REQUEST') && REST_REQUEST) &&
+        ($query instanceof \WP_Query) &&
+        !$query->is_main_query();
+
+      return array_map(function (\WP_Post $post) use ($postTypes, $coreVirtualFields, $isSecondaryRestQuery) {
+        if (!in_array($post->post_type, $postTypes, true)) {
+          return $post;
+        }
+
+        /**
+         * Avoid mutating WP's cached WP_Post instances. This prevents "leaked" virtual field
+         * values from appearing in later queries within the same request.
+         */
+        $post = clone $post;
+
+        foreach ($coreVirtualFields as $_field) {
+          $settings = $_field->getSettings();
+          $fieldName = $settings['name'];
+          $maxDepth = $_field->getMaxRecursiveDepth();
+
+          /**
+           * Generic "top-level only" behavior in REST:
+           * If a field is configured with `maxRecursiveDepth(1)`, it can only appear at depth 0
+           * (i.e. the post being directly serialized by the REST controller). Relationship/query
+           * posts are effectively depth 1+, so we skip adding those fields in secondary REST queries.
+           */
+          if ($isSecondaryRestQuery && $maxDepth <= 1) {
+            if (property_exists($post, $fieldName)) {
+              unset($post->{$fieldName});
+            }
+            continue;
+          }
+
+          if ($_field->_getRecursiveIterationCount() < $maxDepth) {
+            $post->{$fieldName} = $_field->getValue($post);
+          } else {
+            // If the field already exists from an earlier context, remove it at max depth.
+            if (property_exists($post, $fieldName)) {
+              unset($post->{$fieldName});
             }
           }
         }
@@ -57,13 +86,38 @@ if (!function_exists('register_virtual_fields')) {
 
       foreach ($restVirtualFields as $_field) {
         $field = $_field->getSettings();
+        $fieldName = $field['name'];
+        $maxDepth = $_field->getMaxRecursiveDepth();
         register_rest_field(
           $postTypes,
-          $field['name'],
+          $fieldName,
           array(
-            'get_callback' => function ($post) use ($_field) {
+            'get_callback' => function ($post) use ($_field, $fieldName, $maxDepth) {
               $postObj = Utils::asPostObject($post);
-              return $_field->getValue($postObj);
+              if (!$postObj) {
+                return null;
+              }
+
+              /**
+               * Enforce max recursion depth for REST as well.
+               */
+              if ($_field->_getRecursiveIterationCount() >= $maxDepth) {
+                return null;
+              }
+
+              // Per-request memoization without mutating WP_Post objects (avoids object-cache leaks).
+              static $restValueCache = [];
+              $postId = $postObj->ID ?? null;
+              $cacheKey = $postId ? ($postId . ':' . $fieldName) : null;
+              if ($cacheKey && array_key_exists($cacheKey, $restValueCache)) {
+                return $restValueCache[$cacheKey];
+              }
+
+              $value = $_field->getValue($postObj);
+              if ($cacheKey) {
+                $restValueCache[$cacheKey] = $value;
+              }
+              return $value;
             },
             'update_callback' => null,
             'schema' => [
@@ -99,42 +153,6 @@ if (!function_exists('register_virtual_fields')) {
 
       return rest_ensure_response($data);
     }, 10, 2);
-
-    // add virtual fields to ACF relational fields data
-    // $addVirtualFieldsToAcfRelationalFields = function ($value, $post_id, $field) use ($postTypes, $virtualFields, &$addVirtualFieldsToAcfRelationalFields) {
-    //   if (!$value)
-    //     return $value;
-
-    //   if (!is_array($value))
-    //     $value = [$value];
-
-    //   // Remove the filter to prevent infinite loop:
-    //   // remove_filter('acf/format_value/type=relationship', $addVirtualFieldsToAcfRelationalFields, 10, 3);
-
-    //   // Add virtual fields to posts:
-    //   $modifiedPosts = array_map(function (WP_Post $relatedPost) use ($postTypes, $virtualFields) {
-    //     if (!in_array($relatedPost->post_type, $postTypes))
-    //       return $relatedPost;
-
-    //     // add each virtual field to related post object:
-    //     foreach ($virtualFields as $_field) {
-    //       $field = $_field->getSettings();
-    //       if (in_array('acf', $field['excludedFrom']))
-    //         continue;
-
-    //       $relatedPost->{$field['name']} = $_field->getValue($relatedPost);
-    //     }
-
-    //     return $relatedPost;
-    //   }, $value);
-
-    //   // Re-add the filter after the VirtualField `getValue` functions have executed:
-    //   // add_filter('acf/format_value/type=relationship', $addVirtualFieldsToAcfRelationalFields, 10, 3);
-
-    //   return $modifiedPosts;
-    // };
-
-    // add_filter('acf/format_value/type=relationship', $addVirtualFieldsToAcfRelationalFields, 10, 3);
 
     // add virtual fields to post responses via CloakWP Eloquent package
     add_filter('cloakwp/eloquent/posts', function ($posts) use ($postTypes, $virtualFields) {
