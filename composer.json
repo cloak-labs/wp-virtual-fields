@@ -1,11 +1,10 @@
 {
   "name": "cloakwp/virtual-fields",
   "description": "Simple API for creating virtual fields on WordPress posts.",
-  "version": "0.0.10",
   "license": "LGPL-3.0-only",
   "require": {
     "composer/installers": "^2.2",
-    "cloakwp/core": "^0.0"
+    "cloakwp/core": "dev-main"
   },
   "autoload": {
     "psr-4": {
