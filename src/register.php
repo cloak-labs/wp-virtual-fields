@@ -13,6 +13,10 @@ if (!function_exists('register_virtual_fields')) {
 
     // add virtual fields to post objects returned by `get_posts` and/or `WP_Query`:
     add_filter("the_posts", function ($posts, $query) use ($postTypes, $virtualFields) {
+      // Internal queries can opt out of enrichment without suppressing other WP filters.
+      if ($query instanceof \WP_Query && $query->get('cloakwp_virtual_fields') === false) {
+        return $posts;
+      }
       if (!is_array($posts) || !count($posts))
         return $posts;
 

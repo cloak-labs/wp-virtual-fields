@@ -89,3 +89,7 @@ Pass an array of strings to the `excludeFrom` method, including one or more of t
 - `core` -- exclude from core WP function responses (i.e. `get_posts` and `WP_Query`)
 
 This may be ideal if for example you have a particularly expensive `value` retrieval function for a field that you only ever use via the REST API, in which case doing `excludeFrom(['core'])` would help with general performance.
+
+### Internal queries without virtual fields
+
+Pass `'cloakwp_virtual_fields' => false` to `WP_Query` or `get_posts()` when only native post fields are needed. This skips virtual-field enrichment for that query while keeping other WordPress query filters active. Normal queries and REST response fields retain their existing behavior.
