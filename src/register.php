@@ -10,9 +10,11 @@ if (!function_exists('register_virtual_fields')) {
   {
     if (!is_array($postTypes))
       $postTypes = [$postTypes];
+    static $registrations = [];
+    $registrations[] = [$postTypes, array_map(static fn($field) => \WeakReference::create($field), $virtualFields)];
 
     // add virtual fields to post objects returned by `get_posts` and/or `WP_Query`:
-    add_filter("the_posts", function ($posts, $query) use ($postTypes, $virtualFields) {
+    add_filter("the_posts", function ($posts, $query) use ($postTypes, $virtualFields, &$registrations) {
       // Internal queries can opt out of enrichment without suppressing other WP filters.
       if ($query instanceof \WP_Query && $query->get('cloakwp_virtual_fields') === false) {
         return $posts;
@@ -28,12 +30,28 @@ if (!function_exists('register_virtual_fields')) {
       if (empty($coreVirtualFields)) {
         return $posts;
       }
+      $discardValues = $query instanceof \WP_Query && $query->get('cloakwp_virtual_fields') === 'discard';
+
+      // WordPress primes these caches after the_posts. Virtual fields read them
+      // here, so prime matching posts together before callbacks cause N+1 reads.
+      // Fetch canonical posts rather than caching enriched/cloned WP_Post objects.
+      if ($query instanceof \WP_Query && $query->get('cache_results') !== false && function_exists('_prime_post_caches')) {
+        $ids = [];
+        foreach ($posts as $post) {
+          if ($post instanceof \WP_Post && in_array($post->post_type, $postTypes, true)) {
+            $ids[] = $post->ID;
+          }
+        }
+        if ($ids) {
+          _prime_post_caches($ids, !$discardValues, true);
+        }
+      }
 
       $isSecondaryRestQuery = (defined('REST_REQUEST') && REST_REQUEST) &&
         ($query instanceof \WP_Query) &&
         !$query->is_main_query();
 
-      return array_map(function (\WP_Post $post) use ($postTypes, $coreVirtualFields, $isSecondaryRestQuery) {
+      return array_map(function (\WP_Post $post) use ($postTypes, $coreVirtualFields, $isSecondaryRestQuery, $discardValues, &$registrations) {
         if (!in_array($post->post_type, $postTypes, true)) {
           return $post;
         }
@@ -43,6 +61,23 @@ if (!function_exists('register_virtual_fields')) {
          * values from appearing in later queries within the same request.
          */
         $post = clone $post;
+        // If any callback needs to run, retain normal enrichment for this post so
+        // callbacks can still depend on earlier virtual fields. State is retained
+        // even when all values are discarded by an internal media query.
+        $discardPost = $discardValues;
+        if ($discardPost) {
+          foreach ($registrations as [$types, $fields]) {
+            if (!in_array($post->post_type, $types, true)) continue;
+            foreach ($fields as $reference) {
+              $candidate = $reference->get();
+              if (!$candidate || in_array('core', $candidate->getSettings()['excludedFrom'], true)) continue;
+              if (!method_exists($candidate, '_canDiscardForMediaQueries') || !$candidate->_canDiscardForMediaQueries($post)) {
+                $discardPost = false;
+                break 2;
+              }
+            }
+          }
+        }
 
         foreach ($coreVirtualFields as $_field) {
           $settings = $_field->getSettings();
@@ -63,7 +98,11 @@ if (!function_exists('register_virtual_fields')) {
           }
 
           if ($_field->_getRecursiveIterationCount() < $maxDepth) {
-            $post->{$fieldName} = $_field->getValue($post);
+            if ($discardPost) {
+              $_field->_recordDiscardedValue($post);
+            } else {
+              $post->{$fieldName} = $_field->getValue($post);
+            }
           } else {
             // If the field already exists from an earlier context, remove it at max depth.
             if (property_exists($post, $fieldName)) {

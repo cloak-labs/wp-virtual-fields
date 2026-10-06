@@ -93,3 +93,10 @@ This may be ideal if for example you have a particularly expensive `value` retri
 ### Internal queries without virtual fields
 
 Pass `'cloakwp_virtual_fields' => false` to `WP_Query` or `get_posts()` when only native post fields are needed. This skips virtual-field enrichment for that query while keeping other WordPress query filters active. Normal queries and REST response fields retain their existing behavior.
+
+
+## Media query values
+
+Queries normally enrich matching posts after priming their WordPress post, metadata, and term caches in a batch. `cache_results => false` keeps cache priming disabled, and `cloakwp_virtual_fields => false` skips enrichment entirely.
+
+Internal media queries that discard virtual values can use `cloakwp_virtual_fields => 'discard'`. Fields opt in with `discardableForMediaQueries(true)` or a condition closure receiving the post. All matching registered fields must opt in for a post to skip callbacks; otherwise normal enrichment runs. Discarded values still record the field's processed recursion state. Only opt in callbacks whose execution can be skipped safely; the default remains normal callback execution.

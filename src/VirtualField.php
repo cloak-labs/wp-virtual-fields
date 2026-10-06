@@ -23,6 +23,30 @@ class VirtualField
    * field that points to a post ID currently being processed).
    */
   protected array $state = [];
+  protected bool|\Closure $discardableForMediaQueries = false;
+
+  /** Opt in when a media query can discard the value without callback side effects. */
+  public function discardableForMediaQueries(bool|\Closure $condition = true): static
+  {
+    $this->discardableForMediaQueries = $condition;
+    return $this;
+  }
+
+  /** @internal */
+  public function _canDiscardForMediaQueries(\WP_Post $post): bool
+  {
+    return $this->discardableForMediaQueries instanceof \Closure
+      ? (bool) ($this->discardableForMediaQueries)($post)
+      : $this->discardableForMediaQueries;
+  }
+
+  /** @internal Keep recursion state when a caller discards an opted-in value. */
+  public function _recordDiscardedValue(\WP_Post $post): void
+  {
+    if (is_callable($this->value) && $post->ID > 0) {
+      $this->state[$post->ID] = 'processed';
+    }
+  }
 
   public function __construct(string $field_name)
   {
